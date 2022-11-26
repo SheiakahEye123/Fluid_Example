@@ -10,12 +10,14 @@ import matplotlib.pyplot as plt
 GRAVITY_FORCE = -3
 WORLD_WIDTH_PIXELS = 128
 WORLD_HEIGHT_PIXELS = 128
-WALL_DAMP = 1.1
-TD = 3
-XOFFSET = 10;
-YOFFSET = 10;
-NUM_PARTICLES = 1000
-MAX_DISTANCE = 1.5;
+WALL_DAMP = 0.5
+TD = 0.5
+XOFFSET = 0
+YOFFSET = 0
+NUM_PARTICLES = 2000
+MAX_DISTANCE = 4
+MIN_DISTANCE = 0.5
+PRESSURE_COEFFICIENT = 0.25
 
 
 class Particle:
@@ -70,50 +72,58 @@ def update_particles(particles_list: List[Particle]):
 
     for particle in particles_list:
 
-        density = 0.0
         # Density is calculated by summing the relative distance of neighboring particles
         for particle_2 in particles_list:
             distance = math.hypot(
-                (particle.x_pos - particle_2.x_pos)
-                + (particle.y_pos - particle_2.y_pos)
+                (particle.x_pos - particle_2.x_pos), (particle.y_pos - particle_2.y_pos)
             )
-            if particle != particle_2 and distance < MAX_DISTANCE:
+            if particle != particle_2 and MIN_DISTANCE < distance < MAX_DISTANCE:
                 # normal distance is between 0 and 1
                 normal_distance = 1 - distance / MAX_DISTANCE
-                density += normal_distance ** 2
-                particle_2.pressure += normal_distance ** 2
+                pressure = normal_distance ** 2
+                particle_2.y_vel += PRESSURE_COEFFICIENT * (pressure * (particle_2.y_pos - particle.y_pos));
+                particle_2.x_vel += PRESSURE_COEFFICIENT * (pressure * (particle_2.x_pos - particle.x_pos));
 
         # Calculate the Force pushing on this particle
-        force_x = 1;
+        force_x = 0;
         force_y = 0;
         force_y += GRAVITY_FORCE
 
         # Calculate velocity from force
 
         # Move particle by the value of its velocity
+
+
+        particle.x_vel += force_x * TD
+        particle.y_vel += force_y * TD
+        particle.x_vel *= 0.95
+        particle.y_vel *= 0.95
+        particle.x_pos += particle.x_vel * TD
+        particle.y_pos += particle.y_vel * TD
         if particle.x_pos < 0:
-            # force_x -= (particle.x_pos - 0) * WALL_DAMP
-            force_x = force_x * -1
+            #force_x -= (particle.x_pos - 0) * WALL_DAMP
+            particle.x_vel = 0.2
+            particle.x_pos = XOFFSET
+            # force_x = force_x * -1
 
         # Same thing for the right wall
         if particle.x_pos > WORLD_WIDTH_PIXELS:
-            # force_x -= (particle.x_pos - WORLD_WIDTH_PIXELS) * WALL_DAMP
-            force_x = force_x * -1
+            #force_x -= (particle.x_pos - WORLD_WIDTH_PIXELS) * WALL_DAMP
+            particle.x_vel = -0.2
+            particle.x_pos = WORLD_WIDTH_PIXELS - XOFFSET
+            # force_x = force_x * -1
 
         # Same thing but for the floor
         if particle.y_pos <= 0:
             # We use SIM_W instead of BOTTOM here because otherwise particles are too low
-            # force_y -= particle.y_pos * WALL_DAMP
-            force_y = force_y * -1
+            particle.y_vel = random.random() * 5
+            particle.y_pos = YOFFSET
+            #force_y = force_y * -1
 
         if particle.y_pos > WORLD_HEIGHT_PIXELS:
             # force_x -= (particle.x_pos - WORLD_WIDTH_PIXELS) * WALL_DAMP
-            force_y = force_y * -1
-
-        particle.x_vel += force_x * TD
-        particle.y_vel += force_y * TD
-        particle.x_pos += particle.x_vel * TD
-        particle.y_pos += particle.y_vel * TD
+            particle.y_vel = -0.2
+            particle.y_pos = WORLD_HEIGHT_PIXELS - YOFFSET
 
 
 def main():
