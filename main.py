@@ -7,11 +7,11 @@ import matplotlib.pyplot as plot
 import matplotlib.pyplot as plt
 
 # Constants
-GRAVITY_FORCE = -1
+GRAVITY_FORCE = -3
 WORLD_WIDTH_PIXELS = 128
 WORLD_HEIGHT_PIXELS = 128
 WALL_DAMP = 1.1
-TD = 0.1
+TD = 3
 XOFFSET = 10;
 YOFFSET = 10;
 NUM_PARTICLES = 1000
@@ -92,16 +92,23 @@ def update_particles(particles_list: List[Particle]):
 
         # Move particle by the value of its velocity
         if particle.x_pos < 0:
-            force_x -= (particle.x_pos - 0) * WALL_DAMP
+            # force_x -= (particle.x_pos - 0) * WALL_DAMP
+            force_x = force_x * -1
 
         # Same thing for the right wall
         if particle.x_pos > WORLD_WIDTH_PIXELS:
-            force_x -= (particle.x_pos - WORLD_WIDTH_PIXELS) * WALL_DAMP
+            # force_x -= (particle.x_pos - WORLD_WIDTH_PIXELS) * WALL_DAMP
+            force_x = force_x * -1
 
         # Same thing but for the floor
-        if particle.y_pos < 0:
+        if particle.y_pos <= 0:
             # We use SIM_W instead of BOTTOM here because otherwise particles are too low
-            force_y -= particle.y_pos * WALL_DAMP
+            # force_y -= particle.y_pos * WALL_DAMP
+            force_y = force_y * -1
+
+        if particle.y_pos > WORLD_HEIGHT_PIXELS:
+            # force_x -= (particle.x_pos - WORLD_WIDTH_PIXELS) * WALL_DAMP
+            force_y = force_y * -1
 
         particle.x_vel += force_x * TD
         particle.y_vel += force_y * TD
