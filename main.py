@@ -5,19 +5,21 @@ from typing import List
 
 import matplotlib.pyplot as plot
 import matplotlib.pyplot as plt
+import null as null
 
 # Constants
-GRAVITY_FORCE = -3
+GRAVITY_FORCE = -1
 WORLD_WIDTH_PIXELS = 128
 WORLD_HEIGHT_PIXELS = 128
 WALL_DAMP = 0.5
-TD = 0.5
+TD = 1
 XOFFSET = 0
 YOFFSET = 0
 NUM_PARTICLES = 2000
-MAX_DISTANCE = 4
+MAX_DISTANCE = 3
 MIN_DISTANCE = 0.5
 PRESSURE_COEFFICIENT = 0.25
+maxCap = 10
 
 
 class Particle:
@@ -28,6 +30,29 @@ class Particle:
 
         self.x_vel = 0.0
         self.y_vel = 0.0
+
+class QuadTree:
+    def __init__(self, xmin: float, ymin: float, xmax: float, ymax: float, particlesList: []):
+        self.particlesList = particlesList
+        self.ymax = ymax
+        self.xmax = xmax
+        self.ymin = ymin
+        self.xmin = xmin
+        self.northwest = null
+        self.southwest = null
+        self.southeast = null
+        self.northeast = null
+    def split(self):
+        if self.northwest == null and self.particlesList.size() > maxCap:
+            for _ in self.particlesList:
+                if self.xmin < _.x_pos < self.xmax / 2:
+                    _.add
+
+    def insert(self, quadtree):
+        for _ in self.particlesList:
+            if quadtree.xmin <= _.x_pos < quadtree.xmax / 2 and quadtree.ymin <= _.y_pos < quadtree.ymax / 2:
+                self.particlesList.add(_)
+        
 
 
 # Interactive Mode (Allow plots to be updated)
