@@ -2,7 +2,9 @@ import math
 import random
 import sys
 from typing import List
+from xmlrpc.client import boolean
 
+import matplotlib.lines
 import matplotlib.pyplot as plot
 import matplotlib.pyplot as plt
 import null as null
@@ -15,11 +17,11 @@ WALL_DAMP = 0.5
 TD = 1
 XOFFSET = 0
 YOFFSET = 0
-NUM_PARTICLES = 2000
+NUM_PARTICLES = 10
 MAX_DISTANCE = 3
 MIN_DISTANCE = 0.5
 PRESSURE_COEFFICIENT = 0.25
-maxCap = 10
+maxCap = 1000
 
 
 class Particle:
@@ -31,34 +33,57 @@ class Particle:
         self.x_vel = 0.0
         self.y_vel = 0.0
 
+
 class QuadTree:
-    def __init__(self, xmin: float, ymin: float, xmax: float, ymax: float, particlesList: []):
+
+    def __init__(self, xmin: float, ymin: float, xmax: float, ymax: float, particlesList: [], level: int):
+
         self.particlesList = particlesList
         self.ymax = ymax
         self.xmax = xmax
         self.ymin = ymin
         self.xmin = xmin
-        self.northwest = null
-        self.southwest = null
-        self.southeast = null
-        self.northeast = null
-    def split(self):
-        if self.northwest == null and self.particlesList.size() > maxCap:
-            for _ in self.particlesList:
-                if self.xmin < _.x_pos < self.xmax / 2:
-                    _.add
 
-    def insert(self, quadtree):
+        self.level = level
+
+    def split(self):
+        if self.particlesList.size() > maxCap:
+            northeast = QuadTree(self.xmin, self.xmax / 2, self.ymin, self.ymax / 2, [], self.level + 1)
+            southeast = QuadTree(self.xmin, self.xmax / 2, self.ymin / 2, self.ymax, [], self.level + 1)
+            northwest = QuadTree(self.xmin / 2, self.xmax, self.ymin, self.ymax / 2, [], self.level + 1)
+            southwest = QuadTree(self.xmin / 2, self.xmax / 2, self.ymin / 2, self.ymax, [], self.level + 1)
+            self.insertParticles(northeast, southeast, northwest, southwest)
+
+    def insertParticles(self, ne, se, nw, sw):
         for _ in self.particlesList:
-            if quadtree.xmin <= _.x_pos < quadtree.xmax / 2 and quadtree.ymin <= _.y_pos < quadtree.ymax / 2:
-                self.particlesList.add(_)
-        
+            if ne.xmin <= _.x_pos < ne.xmax and ne.ymin <= _.y_pos < ne.ymax:
+                # noreast
+                ne.particlesList.add(_)
+            if se.xmin <= _.x_pos < se.xmax and se.ymin <= _.y_pos < se.ymax:
+                # souteast
+                se.particlesList.add(_)
+            if nw.xmin <= _.x_pos < nw.xmax and nw.ymin <= _.y_pos < nw.ymax:
+                # norwest
+                nw.particlesList.add(_)
+            if sw.xmin <= _.x_pos < sw.xmax and sw.ymin <= _.y_pos < sw.ymax:
+                # southest
+                se.particlesList.add(_)
+
+        self.particlesList.clear()
+
+        ne.split()
+        se.split()
+        nw.split()
+        sw.split()
+
+
 
 
 # Interactive Mode (Allow plots to be updated)
 plot.ion()
 # Allows the X button to work. Don't worry about how this works exactly unless you are interested
 plot.gcf().canvas.mpl_connect('close_event', lambda event: sys.exit())
+
 
 def draw(particles: List[Particle]):
     x_positions = [particle.x_pos for particle in particles]
@@ -89,6 +114,7 @@ def make_particles() -> List[Particle]:
 
     return particles_list
 
+
 def update_particles(particles_list: List[Particle]):
     """
     Calculates density of particles
@@ -118,7 +144,6 @@ def update_particles(particles_list: List[Particle]):
 
         # Move particle by the value of its velocity
 
-
         particle.x_vel += force_x * TD
         particle.y_vel += force_y * TD
         particle.x_vel *= 0.95
@@ -126,14 +151,14 @@ def update_particles(particles_list: List[Particle]):
         particle.x_pos += particle.x_vel * TD
         particle.y_pos += particle.y_vel * TD
         if particle.x_pos < 0:
-            #force_x -= (particle.x_pos - 0) * WALL_DAMP
+            # force_x -= (particle.x_pos - 0) * WALL_DAMP
             particle.x_vel = 0.2
             particle.x_pos = XOFFSET
             # force_x = force_x * -1
 
         # Same thing for the right wall
         if particle.x_pos > WORLD_WIDTH_PIXELS:
-            #force_x -= (particle.x_pos - WORLD_WIDTH_PIXELS) * WALL_DAMP
+            # force_x -= (particle.x_pos - WORLD_WIDTH_PIXELS) * WALL_DAMP
             particle.x_vel = -0.2
             particle.x_pos = WORLD_WIDTH_PIXELS - XOFFSET
             # force_x = force_x * -1
@@ -143,12 +168,15 @@ def update_particles(particles_list: List[Particle]):
             # We use SIM_W instead of BOTTOM here because otherwise particles are too low
             particle.y_vel = random.random() * 5
             particle.y_pos = YOFFSET
-            #force_y = force_y * -1
+            # force_y = force_y * -1
 
         if particle.y_pos > WORLD_HEIGHT_PIXELS:
             # force_x -= (particle.x_pos - WORLD_WIDTH_PIXELS) * WALL_DAMP
             particle.y_vel = -0.2
             particle.y_pos = WORLD_HEIGHT_PIXELS - YOFFSET
+
+        baseQuad = QuadTree(0, 0, WORLD_WIDTH_PIXELS, WORLD_HEIGHT_PIXELS, particles_list, 0)
+        baseQuad.insertParticles()
 
 
 def main():
@@ -158,5 +186,6 @@ def main():
     while True:
         draw(particles_list)
         update_particles(particles_list)
+
 
 main()
