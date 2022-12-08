@@ -17,11 +17,12 @@ WALL_DAMP = 0.5
 TD = 1
 XOFFSET = 0
 YOFFSET = 0
-NUM_PARTICLES = 10
+NUM_PARTICLES = 1000
 MAX_DISTANCE = 3
 MIN_DISTANCE = 0.5
 PRESSURE_COEFFICIENT = 0.25
-maxCap = 1000
+maxCap = 100
+QuadTreeList = []
 
 
 class Particle:
@@ -47,36 +48,57 @@ class QuadTree:
         self.level = level
 
     def split(self):
-        if self.particlesList.size() > maxCap:
-            northeast = QuadTree(self.xmin, self.xmax / 2, self.ymin, self.ymax / 2, [], self.level + 1)
-            southeast = QuadTree(self.xmin, self.xmax / 2, self.ymin / 2, self.ymax, [], self.level + 1)
-            northwest = QuadTree(self.xmin / 2, self.xmax, self.ymin, self.ymax / 2, [], self.level + 1)
-            southwest = QuadTree(self.xmin / 2, self.xmax / 2, self.ymin / 2, self.ymax, [], self.level + 1)
+        if len(self.particlesList) > maxCap:
+            northeast = QuadTree(0, 0, 0, 0, [], self.level + 1)
+            northeast.xmin = self.xmin
+            northeast.xmax = self.xmax / 2.0
+            northeast.ymin = self.ymin
+            northeast.ymax = self.ymax / 2.0
+
+            southeast = QuadTree(0, 0, 0, 0, [], self.level + 1)
+            southeast.xmin = self.xmin
+            southeast.xmax = self.xmax / 2.0
+            southeast.ymin = self.ymin / 2.0
+            southeast.ymax = self.ymax
+
+            northwest = QuadTree(0, 0, 0, 0, [], self.level + 1)
+            northwest.xmin = self.xmin / 2.0
+            northwest.xmax = self.xmax
+            northwest.ymin = self.ymin
+            northwest.ymax = self.ymax / 2.0
+
+            southwest = QuadTree(0, 0, 0, 0, [], self.level + 1)
+            southwest.xmin = self.xmin / 2.0
+            southwest.xmax = self.xmax
+            southwest.ymin = self.ymin / 2.0
+            southwest.ymax = self.ymax
             self.insertParticles(northeast, southeast, northwest, southwest)
 
-    def insertParticles(self, ne, se, nw, sw):
-        for _ in self.particlesList:
-            if ne.xmin <= _.x_pos < ne.xmax and ne.ymin <= _.y_pos < ne.ymax:
-                # noreast
-                ne.particlesList.add(_)
-            if se.xmin <= _.x_pos < se.xmax and se.ymin <= _.y_pos < se.ymax:
-                # souteast
-                se.particlesList.add(_)
-            if nw.xmin <= _.x_pos < nw.xmax and nw.ymin <= _.y_pos < nw.ymax:
-                # norwest
-                nw.particlesList.add(_)
-            if sw.xmin <= _.x_pos < sw.xmax and sw.ymin <= _.y_pos < sw.ymax:
-                # southest
-                se.particlesList.add(_)
+        if len(self.particlesList) <= maxCap:
+            QuadTreeList.append(self)
 
-        self.particlesList.clear()
+    def insertParticles(self, ne, se, nw, sw):
+        for particle in self.particlesList:
+            if ne.xmin <= particle.x_pos < ne.xmax and ne.ymin <= particle.y_pos < ne.ymax:
+                # noreast
+                ne.particlesList.append(particle)
+            if se.xmin <= particle.x_pos < se.xmax and se.ymin <= particle.y_pos < se.ymax:
+                # souteast
+                se.particlesList.append(particle)
+            if nw.xmin <= particle.x_pos < nw.xmax and nw.ymin <= particle.y_pos < nw.ymax:
+                # norwest
+                nw.particlesList.append(particle)
+            if sw.xmin <= particle.x_pos < sw.xmax and sw.ymin <= particle.y_pos < sw.ymax:
+                # southwest
+
+                sw.particlesList.append(particle)
+        #if len(self.particlesList) != 0:
+            #print(ne.xmax)
 
         ne.split()
         se.split()
         nw.split()
         sw.split()
-
-
 
 
 # Interactive Mode (Allow plots to be updated)
@@ -115,68 +137,65 @@ def make_particles() -> List[Particle]:
     return particles_list
 
 
-def update_particles(particles_list: List[Particle]):
+def update_particles():
     """
     Calculates density of particles
         Density is calculated by summing the relative distance of neighboring particles
     """
+    for qt in QuadTreeList:
+        for particle in qt.particlesList:
 
-    for particle in particles_list:
+            # Density is calculated by summing the relative distance of neighboring particles
+            for particle_2 in qt.particlesList:
+                distance = math.hypot(
+                    (particle.x_pos - particle_2.x_pos), (particle.y_pos - particle_2.y_pos)
+                )
+                if particle != particle_2 and MIN_DISTANCE < distance < MAX_DISTANCE:
+                    # normal distance is between 0 and 1
+                    normal_distance = 1 - distance / MAX_DISTANCE
+                    pressure = normal_distance ** 2
+                    particle_2.y_vel += PRESSURE_COEFFICIENT * (pressure * (particle_2.y_pos - particle.y_pos));
+                    particle_2.x_vel += PRESSURE_COEFFICIENT * (pressure * (particle_2.x_pos - particle.x_pos));
 
-        # Density is calculated by summing the relative distance of neighboring particles
-        for particle_2 in particles_list:
-            distance = math.hypot(
-                (particle.x_pos - particle_2.x_pos), (particle.y_pos - particle_2.y_pos)
-            )
-            if particle != particle_2 and MIN_DISTANCE < distance < MAX_DISTANCE:
-                # normal distance is between 0 and 1
-                normal_distance = 1 - distance / MAX_DISTANCE
-                pressure = normal_distance ** 2
-                particle_2.y_vel += PRESSURE_COEFFICIENT * (pressure * (particle_2.y_pos - particle.y_pos));
-                particle_2.x_vel += PRESSURE_COEFFICIENT * (pressure * (particle_2.x_pos - particle.x_pos));
+            # Calculate the Force pushing on this particle
+            force_x = 0;
+            force_y = 0;
+            force_y += GRAVITY_FORCE
 
-        # Calculate the Force pushing on this particle
-        force_x = 0;
-        force_y = 0;
-        force_y += GRAVITY_FORCE
+            # Calculate velocity from force
 
-        # Calculate velocity from force
+            # Move particle by the value of its velocity
 
-        # Move particle by the value of its velocity
+            particle.x_vel += force_x * TD
+            particle.y_vel += force_y * TD
+            particle.x_vel *= 0.95
+            particle.y_vel *= 0.95
+            particle.x_pos += particle.x_vel * TD
+            particle.y_pos += particle.y_vel * TD
+            if particle.x_pos < 0:
+                # force_x -= (particle.x_pos - 0) * WALL_DAMP
+                particle.x_vel = 0.2
+                particle.x_pos = XOFFSET
+                # force_x = force_x * -1
 
-        particle.x_vel += force_x * TD
-        particle.y_vel += force_y * TD
-        particle.x_vel *= 0.95
-        particle.y_vel *= 0.95
-        particle.x_pos += particle.x_vel * TD
-        particle.y_pos += particle.y_vel * TD
-        if particle.x_pos < 0:
-            # force_x -= (particle.x_pos - 0) * WALL_DAMP
-            particle.x_vel = 0.2
-            particle.x_pos = XOFFSET
-            # force_x = force_x * -1
+            # Same thing for the right wall
+            if particle.x_pos > WORLD_WIDTH_PIXELS:
+                # force_x -= (particle.x_pos - WORLD_WIDTH_PIXELS) * WALL_DAMP
+                particle.x_vel = -0.2
+                particle.x_pos = WORLD_WIDTH_PIXELS - XOFFSET
+                # force_x = force_x * -1
 
-        # Same thing for the right wall
-        if particle.x_pos > WORLD_WIDTH_PIXELS:
-            # force_x -= (particle.x_pos - WORLD_WIDTH_PIXELS) * WALL_DAMP
-            particle.x_vel = -0.2
-            particle.x_pos = WORLD_WIDTH_PIXELS - XOFFSET
-            # force_x = force_x * -1
+            # Same thing but for the floor
+            if particle.y_pos <= 0:
+                # We use SIM_W instead of BOTTOM here because otherwise particles are too low
+                particle.y_vel = random.random() * 5
+                particle.y_pos = YOFFSET
+                # force_y = force_y * -1
 
-        # Same thing but for the floor
-        if particle.y_pos <= 0:
-            # We use SIM_W instead of BOTTOM here because otherwise particles are too low
-            particle.y_vel = random.random() * 5
-            particle.y_pos = YOFFSET
-            # force_y = force_y * -1
-
-        if particle.y_pos > WORLD_HEIGHT_PIXELS:
-            # force_x -= (particle.x_pos - WORLD_WIDTH_PIXELS) * WALL_DAMP
-            particle.y_vel = -0.2
-            particle.y_pos = WORLD_HEIGHT_PIXELS - YOFFSET
-
-        baseQuad = QuadTree(0, 0, WORLD_WIDTH_PIXELS, WORLD_HEIGHT_PIXELS, particles_list, 0)
-        baseQuad.insertParticles()
+            if particle.y_pos > WORLD_HEIGHT_PIXELS:
+                # force_x -= (particle.x_pos - WORLD_WIDTH_PIXELS) * WALL_DAMP
+                particle.y_vel = -0.2
+                particle.y_pos = WORLD_HEIGHT_PIXELS - YOFFSET
 
 
 def main():
@@ -184,8 +203,12 @@ def main():
 
     # Update loop
     while True:
+        baseQuad = QuadTree(1,1, WORLD_WIDTH_PIXELS, WORLD_HEIGHT_PIXELS, particles_list, 1)
+        baseQuad.split()
         draw(particles_list)
-        update_particles(particles_list)
+        update_particles()
+        QuadTreeList.clear()
+
 
 
 main()
