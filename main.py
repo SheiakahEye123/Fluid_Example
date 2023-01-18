@@ -2,6 +2,7 @@ import math
 import random
 import sys
 from typing import List
+
 import numpy as np
 import time
 
@@ -22,9 +23,11 @@ PRESSURE_COEFFICIENT = 0.25
 maxCap = 10
 VISCOSITY = 0.005
 BOUNCEBACK = 0.2
-BOUNCEBACKX = 5
-BELOWX = -3
-BELOWY = - 3
+BOUNCEBACKX = 0.2
+BELOWX = -5
+BELOWY = -5
+COLOR = 5
+EMPTYONES = np.ones(NUM_PARTICLES,dtype=np.float32)
 
 plot.ion()
 # Allows the X button to work. Don't worry about how this works exactly unless you are interested
@@ -41,6 +44,10 @@ class ParticleList:
         self.force_x = np.zeros(NUM_PARTICLES, dtype=np.float32)
 
     def update_particles(self, sec, sleep):
+
+        self.force_x = np.zeros(NUM_PARTICLES, dtype=np.float32)
+        self.force_y = np.zeros(NUM_PARTICLES, dtype=np.float32)
+
         """
         Calculates density of particles
             Density is calculated by summing the relative distance of neighboring particles
@@ -101,8 +108,6 @@ class ParticleList:
         self.x_pos += self.x_vel * TD
         self.y_pos += self.y_vel * TD
 
-        self.force_x = np.zeros(NUM_PARTICLES, dtype=np.float32)
-        self.force_y = np.zeros(NUM_PARTICLES, dtype=np.float32)
 
         if sleep:
             time.sleep(sec)
@@ -113,7 +118,7 @@ class ParticleList:
         # Draw each particle according to x_position and y_positions
         plot.scatter(self.x_pos, self.y_pos,
                      s=30,  # Each particle is 4px
-                     c='b'  # Color them blue
+                     c=np.clip(np.stack([np.abs(self.force_x) * COLOR, np.abs(self.force_y) * COLOR, EMPTYONES * COLOR]).T,0,1)
                      )
         # Fix the x and y range of the plot (or else they'll change based on the data)
         plot.xlim(-XOFFSET, WORLD_WIDTH_PIXELS + XOFFSET)
